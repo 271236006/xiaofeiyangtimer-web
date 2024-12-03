@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计时器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .timer-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        input {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .label-input {
+            width: 80px;
+            text-align: center;
+        }
+
+        .display-input {
+            width: 100px;
+            background-color: #f8f8f8;
+            text-align: center;
+        }
+
+        .display-input.warning {
+            color: red;
+            font-weight: bold;
+        }
+
+        .display-input.finished {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .edit-input {
+            width: 30px;
+            text-align: center;
+            -webkit-appearance: textfield;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        /* 移除编辑框的上下箭头 */
+        .edit-input::-webkit-outer-spin-button,
+        .edit-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .save-btn:hover {
+            background-color: #45a049;
+        }
+
+        .reset-btn {
+            background-color: #f44336;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .reset-btn:hover {
+            background-color: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="timer-container">
+            <!-- 计时器将通过 JavaScript 动态添加 -->
+        </div>
+    </div>
+
+    <script>
+        let timerCount = 0;
+        const timers = {};
+
+        // 预设的标签名称
+        const timerLabels = [
+            "山大王",
+            "矿洞魔首",
+            "嗜血熊",
+            "噬心修罗",
+            "炼狱冥皇",
+            "神风护法",
+            "惊云护法",
+            "修罗将军",
+            "皇城督统",
+            "太古之骸",
+            "叛军总帅",
+            "修罗天魔王",
+            "太阴真君",
+            "黑暗王子",
+            "龙王",
+            "终极",
+            "西北天狼"
+        ];
+
+        // 页面加载时自动创建计时器
+        window.onload = function() {
+            const savedStates = JSON.parse(localStorage.getItem('timerStates') || '{}');
+            
+            timerLabels.forEach((label, index) => {
+                const state = savedStates[label] || {};
+                addNewTimer(label, state);
+            });
+        };
+
+        // 保存所有计时器的状态
+        function saveStates() {
+            const states = {};
+            document.querySelectorAll('.timer-row').forEach(row => {
+                const label = row.querySelector('.label-input').value;
+                const displayInput = row.querySelector('.display-input');
+                const editInput = row.querySelector('.edit-input');
+                const isRunning = row.hasAttribute('data-end-time');
+                const endTime = row.getAttribute('data-end-time');
+
+                states[label] = {
+                    display: displayInput.value,
+                    edit: editInput.value,
+                    isRunning,
+                    endTime
+                };
+            });
+            localStorage.setItem('timerStates', JSON.stringify(states));
+        }
+
+        function addNewTimer(label, state = {}) {
+            const container = document.getElementById('timer-container');
+            
+            const timerRow = document.createElement('div');
+            timerRow.className = 'timer-row';
+            
+            // 如果计时器正在运行，计算剩余时间
+            let displayValue = '00:00:00';
+            let displayClass = '';
+            let buttonDisabled = '';
+            
+            if (state.isRunning && state.endTime) {
+                const now = Date.now();
+                const remainingTime = Math.max(0, Math.floor((parseInt(state.endTime) - now) / 1000));
+                if (remainingTime > 0) {
+                    displayValue = formatTime(remainingTime);
+                    if (remainingTime < 60) {
+                        displayClass = 'warning';
+                    }
+                    timerRow.setAttribute('data-end-time', state.endTime);
+                    buttonDisabled = 'disabled';
+                } else {
+                    displayValue = '已刷新';
+                    displayClass = 'finished';
+                }
+            }
+            
+            timerRow.innerHTML = `
+                <input type="text" class="label-input" value="${label}" readonly>
+                <input type="text" class="display-input ${displayClass}" value="${displayValue}" readonly>
+                <input type="number" class="edit-input" min="0" value="${state.edit || '0'}">
+                <button class="btn save-btn" onclick="startTimer(this)" ${buttonDisabled}>开始</button>
+                <button class="btn reset-btn" onclick="resetTimer(this)">重置</button>
+            `;
+            
+            container.appendChild(timerRow);
+
+            // 如果计时器正在运行，立即启动它
+            if (state.isRunning && state.endTime) {
+                const now = Date.now();
+                const remainingTime = Math.max(0, Math.floor((parseInt(state.endTime) - now) / 1000));
+                if (remainingTime > 0) {
+                    const button = timerRow.querySelector('.save-btn');
+                    startTimer(button, remainingTime);
+                }
+            }
+
+            // 添加编辑框值变化监听
+            const editInput = timerRow.querySelector('.edit-input');
+            editInput.addEventListener('input', () => saveStates());
+        }
+
+        function startTimer(button, initialSeconds = null) {
+            const row = button.closest('.timer-row');
+            const displayInput = row.querySelector('.display-input');
+            const editInput = row.querySelector('.edit-input');
+            
+            // 只保留开始功能
+            let seconds;
+            let endTime;
+            
+            if (initialSeconds !== null) {
+                seconds = initialSeconds;
+                endTime = Date.now() + seconds * 1000;
+            } else {
+                const minutes = parseInt(editInput.value);
+                seconds = minutes * 60;
+                endTime = Date.now() + seconds * 1000;
+            }
+            
+            row.setAttribute('data-end-time', endTime.toString());
+            displayInput.value = formatTime(seconds);
+            updateDisplayStyle(displayInput, seconds);
+            
+            // 清除可能存在的旧计时器
+            const label = row.querySelector('.label-input').value;
+            if (timers[label]) {
+                clearInterval(timers[label]);
+            }
+            
+            const timerId = setInterval(() => {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.floor((parseInt(row.getAttribute('data-end-time')) - now) / 1000));
+                
+                if (remaining <= 0) {
+                    clearInterval(timerId);
+                    displayInput.value = "已刷新";
+                    displayInput.classList.remove('warning');
+                    displayInput.classList.add('finished');
+                    saveStates();
+                    return;
+                }
+                displayInput.value = formatTime(remaining);
+                updateDisplayStyle(displayInput, remaining);
+                saveStates();
+            }, 1000);
+            
+            timers[label] = timerId;
+            button.disabled = true; // 禁用开始按钮
+            saveStates();
+        }
+
+        function resetTimer(button) {
+            const row = button.closest('.timer-row');
+            const displayInput = row.querySelector('.display-input');
+            const startButton = row.querySelector('.save-btn');
+            const label = row.querySelector('.label-input').value;
+            
+            clearInterval(timers[label]);
+            displayInput.value = "00:00:00";
+            displayInput.classList.remove('warning', 'finished');
+            startButton.disabled = false; // 重置时启用开始按钮
+            row.removeAttribute('data-end-time');
+            saveStates();
+        }
+
+        function formatTime(seconds) {
+            const hrs = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // 添加更新显示样式的函数
+        function updateDisplayStyle(displayInput, seconds) {
+            displayInput.classList.remove('warning', 'finished');
+            if (seconds < 60 && seconds > 0) {
+                displayInput.classList.add('warning');
+            }
+        }
+
+        // 定期保存状态（每秒）
+        setInterval(saveStates, 1000);
+
+        // 页面关闭时保存状态
+        window.addEventListener('beforeunload', saveStates);
+    </script>
+</body>
+</html> 
