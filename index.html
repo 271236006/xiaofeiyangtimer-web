@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>计时器</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -115,10 +117,17 @@
         .reset-btn:hover {
             background-color: #da190b;
         }
+
+        .online-count {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="title">小肥羊计时器</div>
+    <div class="online-count">在线人数：<span id="onlineCount">1</span></div>
     <div class="container">
         <div id="timer-container">
             <!-- 计时器将通过 JavaScript 动态添加 -->
@@ -127,6 +136,45 @@
     <div class="contact">联系作者：QQ 271236006</div>
 
     <script>
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: "AIzaSyB74wtLcE7hNdcB4q2XiFe7AsY-d58MaN4",
+            authDomain: "time-we.firebaseapp.com",
+            databaseURL: "https://time-we-default-rtdb.firebaseio.com",
+            projectId: "time-we",
+            storageBucket: "time-we.firebasestorage.app",
+            messagingSenderId: "819079113889",
+            appId: "1:819079113889:web:7aa398275407ab7db0d4e0",
+            measurementId: "G-NYX8XN8W7Y"
+        };
+
+        // 初始化 Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const connectionsRef = database.ref('connections');
+        const lastOnlineRef = database.ref('lastOnline');
+
+        // 在线人数统计
+        const connectedRef = database.ref('.info/connected');
+        connectedRef.on('value', (snap) => {
+            if (snap.val() === true) {
+                // 当用户连接时
+                const con = connectionsRef.push();
+                
+                // 当用户断开连接时移除
+                con.onDisconnect().remove();
+                
+                // 添加到在线列表
+                con.set(true);
+            }
+        });
+
+        // 监听在线人数变化
+        connectionsRef.on('value', (snap) => {
+            const count = snap.numChildren();
+            document.getElementById('onlineCount').textContent = count;
+        });
+
         let timerCount = 0;
         const timers = {};
 
