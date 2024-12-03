@@ -8,11 +8,25 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .contact {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
         }
 
         .container {
@@ -104,11 +118,13 @@
     </style>
 </head>
 <body>
+    <div class="title">小肥羊计时器</div>
     <div class="container">
         <div id="timer-container">
             <!-- 计时器将通过 JavaScript 动态添加 -->
         </div>
     </div>
+    <div class="contact">联系作者：QQ 271236006</div>
 
     <script>
         let timerCount = 0;
@@ -171,6 +187,17 @@
             const timerRow = document.createElement('div');
             timerRow.className = 'timer-row';
             
+            // 设置默认时间
+            let defaultTime = '0';
+            const index = timerLabels.indexOf(label);
+            if (index >= 0 && index < 8) {
+                defaultTime = '30';  // 1-8号计时器默认30分钟
+            } else if (index >= 8 && index < 13) {
+                defaultTime = '60';  // 9-13号计时器默认60分钟
+            } else if (index >= 13) {
+                defaultTime = '120'; // 14-17号计时器默认120分钟
+            }
+            
             // 如果计时器正在运行，计算剩余时间
             let displayValue = '00:00:00';
             let displayClass = '';
@@ -195,7 +222,7 @@
             timerRow.innerHTML = `
                 <input type="text" class="label-input" value="${label}" readonly>
                 <input type="text" class="display-input ${displayClass}" value="${displayValue}" readonly>
-                <input type="number" class="edit-input" min="0" value="${state.edit || '0'}">
+                <input type="number" class="edit-input" min="0" value="${state.edit || defaultTime}">
                 <button class="btn save-btn" onclick="startTimer(this)" ${buttonDisabled}>开始</button>
                 <button class="btn reset-btn" onclick="resetTimer(this)">重置</button>
             `;
